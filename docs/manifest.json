@@ -1,10 +1,10 @@
 {
     "name": "Level Sensor Firmware",
-    "version": "V1.0",
+    "version": "V1.1",
     "new_install_prompt_erase": false,
     "builds": [
       {
-        "chipFamily": "ESP8266",
+        "chipFamily": "ESP32",
         "parts": [
           { "path": "https://norbert-walter.github.io/NMEA0183-Level-Sensor-DS1603L/firmware.bin", "offset": 0 }
         ]

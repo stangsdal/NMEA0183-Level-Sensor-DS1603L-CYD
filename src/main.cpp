@@ -29,13 +29,13 @@
 */
 
 #include <Arduino.h>
-#include <ESP8266WiFi.h>          //https://github.com/esp8266/Arduino
+#include <WiFi.h>
 #include <DNSServer.h>
-#include <ESP8266WebServer.h>
+// #include <ESP32WebServer.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager
 #include <WiFiUdp.h>
 #include "DS1603L.h"              //https://github.com/wvmarle/Arduino_DS1603L
-#include <SoftwareSerial.h>
+#include <HardwareSerial.h>       // ESP32 uses HardwareSerial instead of SoftwareSerial
 #include <movingAvg.h>
 
 //WiFi AP settings
@@ -50,13 +50,13 @@ unsigned int broadCast = 0;
 unsigned long Timer_RX = 0;
 unsigned long Timeout_RX = 2000;         // Intervall in ms hier 5000ms = 5s
 
-// Angabe wie der Sensor angeschlossen ist. Nutze Dx statt x für Pin-Angabe wenn Wemos benutzt wird
-const byte txPin = D2;                               // tx of the Wemos to rx of the sensor
-const byte rxPin = D3;                               // rx of the Wemos to tx of the sensor
-SoftwareSerial sensorSerial(rxPin, txPin);
+// Angabe wie der Sensor angeschlossen ist. ESP32 GPIO pins
+const byte txPin = 27;                               // tx of the ESP32 to rx of the sensor (GPIO17)
+const byte rxPin = 22;                               // rx of the ESP32 to tx of the sensor (GPIO16)
+HardwareSerial sensorSerial(2);                      // Use Serial2 on ESP32
 
 // Indicator LED
-const byte LED = D4;
+const byte LED = 2;                                  // ESP32 built-in LED (GPIO2)
 
 // If your sensor is connected to Serial, Serial1, Serial2, AltSoftSerial, etc. pass that object to the sensor constructor.
 DS1603L sensor(sensorSerial);
@@ -157,7 +157,8 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
 
-  sensorSerial.begin(9600);                         // Sensor transmits its data at 9600 bps.
+  // Initialize Serial2 with specific pins for ESP32
+  sensorSerial.begin(9600, SERIAL_8N1, rxPin, txPin); // ESP32 Serial2 with custom pins
   sensor.begin();                                   // Initialise the sensor library.
 
   //Timeout in sek., nach Ablauf wird die Setup-Seite ausgeschaltet
@@ -169,11 +170,12 @@ void setup() {
 
   //Automatische Startseite und nach Timeout (wifimanager.setTimeout) erfolgt reset
   if (!wifiManager.autoConnect(SSID, PASSWD)) {  //Gebe eine SSID vor sowie ein Password. Password muss mindestens 7 Zeichen lang sein
-    Serial.println("failed to connect, shut down WiFi-Modem for 3 Minutes then reset Wemos");
-    //Ausschalten WiFi-Modem
-    WiFi.forceSleepBegin();
+    Serial.println("failed to connect, shut down WiFi-Modem for 3 Minutes then reset ESP32");
+    //Ausschalten WiFi-Modem (ESP32 equivalent)
+    WiFi.disconnect();
+    WiFi.mode(WIFI_OFF);
     delay(180000);             //Warte 3 Minuten, in dieser Zeit ist das WiFi-Modul abgeschaltet
-    ESP.reset();
+    ESP.restart();             // ESP32 uses restart() instead of reset()
   }
 
   //if you get here you have connected to the WiFi
@@ -192,9 +194,9 @@ void loop() {
 
   //Überprüfe ob Verbindung zum Netzwerk steht oder starte Setup-Seite
   if (!wifiManager.autoConnect(SSID, PASSWD)) {   //Gebe eine SSID vor sowie ein Password. Password muss mindestens 7 Zeichen lang sein
-    Serial.println("WiFi lost, reset Wemos");
+    Serial.println("WiFi lost, reset ESP32");
     delay(3000);
-    ESP.reset();
+    ESP.restart();             // ESP32 uses restart() instead of reset()
   }
 
   //Setze Broadcastadresse
@@ -215,7 +217,7 @@ void loop() {
   //Sendeschleife Sende vier Pakete
   for (int i = 0; i < 4; i++) {
     Udp.beginPacket(broadCast, portBroadcast); // send UDP to Port 50000 and BroadcastIP
-    Udp.write(XDR);
+    Udp.write((uint8_t*)XDR, strlen(XDR));     // ESP32 WiFiUDP needs explicit size
     Udp.endPacket();
   }
   // Flash LED
