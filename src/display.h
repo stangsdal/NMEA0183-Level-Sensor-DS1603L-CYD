@@ -20,6 +20,7 @@ extern lv_obj_t *status_bar;
 extern lv_obj_t *wifi_signal_label;
 extern lv_obj_t *wifi_status_label;
 extern lv_obj_t *sensor_status_label;
+extern lv_obj_t *mqtt_status_label;
 extern lv_obj_t *time_label;
 
 // Function declarations
@@ -28,7 +29,7 @@ void lvgl_init();
 void create_status_bar();
 void create_ui();
 void update_display(int height_mm, int level_percent, bool wifi_connected, bool sensor_ok);
-void update_status_bar(bool wifi_connected, bool sensor_ok);
+void update_status_bar(bool wifi_connected, bool sensor_ok, bool mqtt_connected);
 void update_uptime();
 void force_screen_refresh();
 

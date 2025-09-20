@@ -23,6 +23,7 @@ lv_obj_t *status_bar;
 lv_obj_t *wifi_signal_label;
 lv_obj_t *wifi_status_label;
 lv_obj_t *sensor_status_label;
+lv_obj_t *mqtt_status_label;
 lv_obj_t *time_label;
 
 // LVGL display flush function
@@ -100,11 +101,17 @@ void create_status_bar()
     lv_obj_set_style_text_color(wifi_status_label, lv_color_hex(0xFFFFFF), 0);
     lv_obj_align(wifi_status_label, LV_ALIGN_LEFT_MID, 25, 0);
 
-    // Sensor status (center)
+    // Sensor status (center-left)
     sensor_status_label = lv_label_create(status_bar);
     lv_label_set_text(sensor_status_label, "ERR");
     lv_obj_set_style_text_color(sensor_status_label, lv_color_hex(0xFFFFFF), 0);
-    lv_obj_align(sensor_status_label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_align(sensor_status_label, LV_ALIGN_CENTER, -20, 0);
+
+    // MQTT status (center-right)
+    mqtt_status_label = lv_label_create(status_bar);
+    lv_label_set_text(mqtt_status_label, "MQTT");
+    lv_obj_set_style_text_color(mqtt_status_label, lv_color_hex(0xFFFFFF), 0);
+    lv_obj_align(mqtt_status_label, LV_ALIGN_CENTER, 20, 0);
 
     // Time/uptime (right side)
     time_label = lv_label_create(status_bar);
@@ -135,7 +142,7 @@ const char *get_sensor_status_icon(bool sensor_ok)
 }
 
 // Update status bar
-void update_status_bar(bool wifi_connected, bool sensor_ok)
+void update_status_bar(bool wifi_connected, bool sensor_ok, bool mqtt_connected)
 {
     static char time_text[10];
 
@@ -175,6 +182,18 @@ void update_status_bar(bool wifi_connected, bool sensor_ok)
     else
     {
         lv_obj_set_style_text_color(sensor_status_label, lv_color_hex(0xFF0000), 0);
+    }
+
+    // Update MQTT status
+    if (mqtt_connected)
+    {
+        lv_label_set_text(mqtt_status_label, "MQTT");
+        lv_obj_set_style_text_color(mqtt_status_label, lv_color_hex(0x00FF00), 0);
+    }
+    else
+    {
+        lv_label_set_text(mqtt_status_label, "No MQTT");
+        lv_obj_set_style_text_color(mqtt_status_label, lv_color_hex(0xFF0000), 0);
     }
 
     // Update time (show uptime in minutes:seconds)

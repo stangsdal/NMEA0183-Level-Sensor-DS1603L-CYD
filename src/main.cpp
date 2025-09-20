@@ -1,8 +1,39 @@
 /*
- * NMEA0183 Level Sensor for ESP32 CYD
+     // Initialize WiFi system
+    wifi_init();
+    bool wifi_is_connected = wifi_connect();
+
+    // Initialize NMEA/UDP system
+    nmea_init();
+
+    // Initialize MQTT system
+    mqtt_init();
+    if (wifi_is_connected)  // Only try MQTT if WiFi is connected
+    {
+        mqtt_connect();
+    }
+
+    Serial.println("=== System Ready ===");ensor for ESP32 CYD
  *
  * Description:
- *   Ultrasonic level sensor with NMEA0183 output for marine applications.
+ *     // Initialize WiFi system
+    wifi_init();
+    if (wifi_connect())
+    {
+        // WiFi connected successfully
+    }
+
+    // Initialize NMEA/UDP system
+    nmea_init();
+
+    // Initialize MQTT system
+    mqtt_init();
+    if (wifi_connect())  // Only try MQTT if WiFi is connected
+    {
+        mqtt_connect();
+    }
+
+    Serial.println("=== System Ready ===");c level sensor with NMEA0183 output for marine applications.
  *   Supports ESP32 CYD (Cheap Yellow Display) with LVGL GUI and WiFi connectivity.
  *   Broadcasts sensor data via UDP in NMEA XDR format for integration with
  *   OpenCPN and other marine electronics.
@@ -47,6 +78,7 @@
 #include "sensor.h"
 #include "wifi_manager.h"
 #include "nmea.h"
+#include "mqtt.h"
 
 void setup()
 {
@@ -81,6 +113,9 @@ void loop()
     // Handle LVGL display tasks - this needs to be called regularly
     lv_timer_handler();
 
+    // Handle MQTT tasks - this needs to be called regularly
+    mqtt_loop();
+
     // Read sensor data
     int height_mm = read_sensor();
     calculate_level(height_mm);
@@ -88,9 +123,10 @@ void loop()
     // Get system status
     bool sensor_ok = is_sensor_ok();
     bool wifi_connected = is_wifi_connected();
+    bool mqtt_connected = is_mqtt_connected();
 
     // Update status bar
-    update_status_bar(wifi_connected, sensor_ok);
+    update_status_bar(wifi_connected, sensor_ok, mqtt_connected);
 
     // Check WiFi connection and reset if lost
     wifi_reset_if_lost();
@@ -112,6 +148,20 @@ void loop()
     {
         String nmea_data = create_nmea_xdr(level_string);
         send_nmea_data(nmea_data);
+
+        // Also send data via MQTT if connected
+        if (mqtt_connected)
+        {
+            mqtt_publish_sensor_data(height_mm, level_string);
+            mqtt_publish_nmea_data(nmea_data);
+        }
+    }
+
+    // Send periodic status updates via MQTT (every 100 loops = ~5 seconds)
+    if (mqtt_connected && loop_count % 100 == 0)
+    {
+        mqtt_publish_status_data(wifi_connected, sensor_ok);
+        mqtt_publish_json_data(height_mm, level_string, wifi_connected, sensor_ok);
     }
 
     // Flash LED to indicate activity
