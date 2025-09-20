@@ -63,7 +63,6 @@ void display_init()
 // Initialize LVGL display
 void lvgl_init()
 {
-    Serial.println("Initializing LVGL...");
     lv_init();
 
     // Create display with buffer
@@ -75,8 +74,6 @@ void lvgl_init()
     lv_indev_t *indev = lv_indev_create();
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
     lv_indev_set_read_cb(indev, my_touchpad_read);
-
-    Serial.printf("LVGL initialized - Buffer size: %d bytes\n", sizeof(buf));
 }
 
 // Create status bar at top of screen
@@ -202,8 +199,6 @@ void update_uptime()
 // Create the UI layout
 void create_ui()
 {
-    Serial.println("Creating UI elements...");
-
     // First create the status bar at the top
     create_status_bar();
 
@@ -250,8 +245,6 @@ void create_ui()
     sensor_label = lv_label_create(main_cont);
     lv_label_set_text(sensor_label, "Sensor: Initializing...");
     lv_obj_align(sensor_label, LV_ALIGN_TOP_MID, 0, 200);
-
-    Serial.println("UI elements created successfully");
 }
 
 // Force screen refresh
@@ -266,16 +259,6 @@ void update_display(int height_mm, int level_percent, bool wifi_connected, bool 
 {
     static char height_text[20];
     static char level_text[20];
-    static int call_count = 0;
-
-    call_count++;
-
-    // Debug output every 50 calls (about every 2.5 seconds with 50ms delay)
-    if (call_count % 50 == 0)
-    {
-        Serial.printf("update_display called: height=%d, level=%d%%, wifi=%s, sensor=%s\n",
-                      height_mm, level_percent, wifi_connected ? "OK" : "NO", sensor_ok ? "OK" : "ERR");
-    }
 
     sprintf(height_text, "%d", height_mm);
     sprintf(level_text, "%d", level_percent);

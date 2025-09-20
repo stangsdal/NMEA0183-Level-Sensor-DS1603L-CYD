@@ -51,33 +51,28 @@
 void setup()
 {
     Serial.begin(115200);
-    Serial.println();
     Serial.println("=== NMEA Level Sensor Starting ===");
 
     // Initialize display system
     display_init();
     lvgl_init();
     create_ui();
-    Serial.println("Display initialized");
 
     // Initialize sensor system
     sensor_init();
-    Serial.println("Sensor initialized");
 
     // Initialize WiFi system
     wifi_init();
     if (wifi_connect())
     {
-        Serial.println("WiFi connected successfully");
+        // WiFi connected successfully
     }
 
     // Initialize NMEA/UDP system
     nmea_init();
-    Serial.println("NMEA system initialized");
 
     Serial.println("=== System Ready ===");
 }
-
 void loop()
 {
     static int loop_count = 0;

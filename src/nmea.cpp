@@ -1,7 +1,7 @@
 #include "nmea.h"
 
 // UDP configuration
-unsigned int portBroadcast = 8888;      // Local port for broadcasting (was 50000 in comments, but code uses 8888)
+unsigned int portBroadcast = 8888; // Local port for broadcasting (was 50000 in comments, but code uses 8888)
 
 // WiFiUDP instance
 WiFiUDP Udp;
@@ -12,12 +12,13 @@ String XDR1;
 // Initialize NMEA/UDP system
 void nmea_init()
 {
-    // Initialize UDP socket for broadcasting
-    if (Udp.begin(portBroadcast)) {
-        Serial.println("NMEA/UDP system initialized successfully");
-        Serial.print("Broadcast port: ");
-        Serial.println(portBroadcast);
-    } else {
+    // Initialize UDP
+    if (Udp.begin(portBroadcast))
+    {
+        // UDP initialized successfully - no verbose logging
+    }
+    else
+    {
         Serial.println("NMEA/UDP system initialization failed");
     }
 }
@@ -28,12 +29,15 @@ int calculate_checksum(String nmea_string)
     int i;
     int XOR;
     int c;
-    
+
     // Calculate checksum ignoring any $'s in the string
-    for (XOR = 0, i = 0; i < 80 && i < nmea_string.length(); i++) {
+    for (XOR = 0, i = 0; i < 80 && i < nmea_string.length(); i++)
+    {
         c = (unsigned char)nmea_string[i];
-        if (c == '*') break;
-        if (c != '$') XOR ^= c;
+        if (c == '*')
+            break;
+        if (c != '$')
+            XOR ^= c;
     }
     return XOR;
 }
@@ -64,40 +68,42 @@ String get_data_string()
 void send_nmea_data(String nmea_string)
 {
     // Check if WiFi is connected
-    if (WiFi.status() != WL_CONNECTED) {
+    if (WiFi.status() != WL_CONNECTED)
+    {
         Serial.println("UDP send failed: WiFi not connected");
         return;
     }
-    
+
     // Set broadcast address
     IPAddress broadCast = WiFi.localIP();
     broadCast[3] = 255;
-    
+
     // Prepare data for transmission
     set_data_string(nmea_string);
     String str = get_data_string();
-    
+
     // Length (with one extra character for the null terminator)
     int str_len = str.length() + 1;
-    
+
     // Prepare the character array (the buffer)
     char XDR[str_len];
     str.toCharArray(XDR, str_len);
-    
+
     // Send single packet with error checking
-    if (Udp.beginPacket(broadCast, portBroadcast)) {
-        size_t bytes_written = Udp.write((uint8_t*)XDR, strlen(XDR));
-        if (Udp.endPacket()) {
-            Serial.print("NMEA data sent: ");
-            Serial.println(str);
-            Serial.print("Broadcast address: ");
-            Serial.println(broadCast);
-            Serial.print("Bytes sent: ");
-            Serial.println(bytes_written);
-        } else {
+    if (Udp.beginPacket(broadCast, portBroadcast))
+    {
+        size_t bytes_written = Udp.write((uint8_t *)XDR, strlen(XDR));
+        if (Udp.endPacket())
+        {
+            // Successful transmission - no verbose logging needed
+        }
+        else
+        {
             Serial.println("UDP send failed: endPacket() failed");
         }
-    } else {
+    }
+    else
+    {
         Serial.println("UDP send failed: beginPacket() failed");
     }
 }
