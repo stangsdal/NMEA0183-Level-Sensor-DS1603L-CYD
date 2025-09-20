@@ -38,6 +38,156 @@
 #include <HardwareSerial.h>       // ESP32 uses HardwareSerial instead of SoftwareSerial
 #include <movingAvg.h>
 
+// Define TFT settings before including TFT_eSPI
+#ifndef TFT_WIDTH
+#define TFT_WIDTH 240
+#endif
+#ifndef TFT_HEIGHT
+#define TFT_HEIGHT 320
+#endif
+#ifndef TFT_BL
+#define TFT_BL 21
+#endif
+
+// LVGL and TFT includes
+#include <lvgl.h>
+#include <TFT_eSPI.h>
+
+// TFT instance
+TFT_eSPI tft = TFT_eSPI();
+
+// LVGL display buffer
+static const uint16_t screenWidth = 240;
+static const uint16_t screenHeight = 320;
+static lv_color_t buf[screenWidth * 10];
+static lv_display_t *disp;
+
+// LVGL UI elements
+lv_obj_t *height_label;
+lv_obj_t *level_label;
+lv_obj_t *wifi_label;
+lv_obj_t *sensor_label;
+
+// LVGL display flush function
+void my_disp_flush(lv_display_t *disp, const lv_area_t *area, uint8_t *color_p)
+{
+    uint32_t w = (area->x2 - area->x1 + 1);
+    uint32_t h = (area->y2 - area->y1 + 1);
+
+    tft.startWrite();
+    tft.setAddrWindow(area->x1, area->y1, w, h);
+    tft.pushColors((uint16_t *)color_p, w * h, true);
+    tft.endWrite();
+
+    lv_display_flush_ready(disp);
+}
+
+// Touch screen support (optional - simplified for now)
+void my_touchpad_read(lv_indev_t *indev_driver, lv_indev_data_t *data)
+{
+    // For now, just return no touch
+    // TODO: Implement proper touch reading if touch screen is connected
+    data->state = LV_INDEV_STATE_REL;
+}
+
+// Initialize LVGL display
+void lvgl_init()
+{
+    lv_init();
+
+    // Create display with buffer
+    disp = lv_display_create(screenWidth, screenHeight);
+    lv_display_set_flush_cb(disp, my_disp_flush);
+    lv_display_set_buffers(disp, buf, NULL, sizeof(buf), LV_DISPLAY_RENDER_MODE_PARTIAL);
+
+    // Initialize touch input (optional)
+    lv_indev_t *indev = lv_indev_create();
+    lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(indev, my_touchpad_read);
+}
+
+// Create the UI
+void create_ui()
+{
+    // Create a main container
+    lv_obj_t *main_cont = lv_obj_create(lv_scr_act());
+    lv_obj_set_size(main_cont, 220, 300);
+    lv_obj_center(main_cont);
+    
+    // Title
+    lv_obj_t *title = lv_label_create(main_cont);
+    lv_label_set_text(title, "NMEA Level Sensor");
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_14, 0);
+    lv_obj_align(title, LV_ALIGN_TOP_MID, 0, 10);
+    
+    // Height display
+    lv_obj_t *height_cont = lv_obj_create(main_cont);
+    lv_obj_set_size(height_cont, 200, 60);
+    lv_obj_align(height_cont, LV_ALIGN_TOP_MID, 0, 50);
+    
+    lv_obj_t *height_title = lv_label_create(height_cont);
+    lv_label_set_text(height_title, "Height [mm]:");
+    lv_obj_align(height_title, LV_ALIGN_TOP_LEFT, 5, 5);
+    
+    height_label = lv_label_create(height_cont);
+    lv_label_set_text(height_label, "---");
+    lv_obj_set_style_text_font(height_label, &lv_font_montserrat_14, 0);
+    lv_obj_align(height_label, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
+    
+    // Level display
+    lv_obj_t *level_cont = lv_obj_create(main_cont);
+    lv_obj_set_size(level_cont, 200, 60);
+    lv_obj_align(level_cont, LV_ALIGN_TOP_MID, 0, 120);
+    
+    lv_obj_t *level_title = lv_label_create(level_cont);
+    lv_label_set_text(level_title, "Level [%]:");
+    lv_obj_align(level_title, LV_ALIGN_TOP_LEFT, 5, 5);
+    
+    level_label = lv_label_create(level_cont);
+    lv_label_set_text(level_label, "---");
+    lv_obj_set_style_text_font(level_label, &lv_font_montserrat_14, 0);
+    lv_obj_align(level_label, LV_ALIGN_BOTTOM_RIGHT, -5, -5);
+    
+    // WiFi status
+    wifi_label = lv_label_create(main_cont);
+    lv_label_set_text(wifi_label, "WiFi: Connecting...");
+    lv_obj_align(wifi_label, LV_ALIGN_TOP_MID, 0, 190);
+    
+    // Sensor status
+    sensor_label = lv_label_create(main_cont);
+    lv_label_set_text(sensor_label, "Sensor: Initializing...");
+    lv_obj_align(sensor_label, LV_ALIGN_TOP_MID, 0, 220);
+}
+
+// Update display with current values
+void update_display(int height_mm, int level_percent, bool wifi_connected, bool sensor_ok)
+{
+    static char height_text[20];
+    static char level_text[20];
+    
+    sprintf(height_text, "%d", height_mm);
+    sprintf(level_text, "%d", level_percent);
+    
+    lv_label_set_text(height_label, height_text);
+    lv_label_set_text(level_label, level_text);
+    
+    if (wifi_connected) {
+        lv_label_set_text(wifi_label, "WiFi: Connected");
+        lv_obj_set_style_text_color(wifi_label, lv_color_hex(0x00FF00), 0);
+    } else {
+        lv_label_set_text(wifi_label, "WiFi: Disconnected");
+        lv_obj_set_style_text_color(wifi_label, lv_color_hex(0xFF0000), 0);
+    }
+    
+    if (sensor_ok) {
+        lv_label_set_text(sensor_label, "Sensor: OK");
+        lv_obj_set_style_text_color(sensor_label, lv_color_hex(0x00FF00), 0);
+    } else {
+        lv_label_set_text(sensor_label, "Sensor: Error");
+        lv_obj_set_style_text_color(sensor_label, lv_color_hex(0xFF0000), 0);
+    }
+}
+
 //WiFi AP settings
 const char SSID[30] = "UltrasonicSensor";
 const char PASSWD[30] = "12345678";
@@ -56,7 +206,7 @@ const byte rxPin = 22;                               // rx of the ESP32 to tx of
 HardwareSerial sensorSerial(2);                      // Use Serial2 on ESP32
 
 // Indicator LED
-const byte LED = 2;                                  // ESP32 built-in LED (GPIO2)
+const byte LED = 26;                                  // ESP32 LED (moved from pin 2 to avoid conflict with TFT_DC)
 
 // If your sensor is connected to Serial, Serial1, Serial2, AltSoftSerial, etc. pass that object to the sensor constructor.
 DS1603L sensor(sensorSerial);
@@ -157,6 +307,21 @@ void setup() {
   Serial.begin(115200);
   Serial.println();
 
+  // Initialize TFT display
+  tft.init();
+  tft.setRotation(0);  // Portrait mode
+  tft.fillScreen(TFT_BLACK);
+  
+  // Turn on backlight
+  pinMode(TFT_BL, OUTPUT);
+  digitalWrite(TFT_BL, HIGH);
+  
+  // Initialize LVGL
+  lvgl_init();
+  
+  // Create the UI
+  create_ui();
+
   // Initialize Serial2 with specific pins for ESP32
   sensorSerial.begin(9600, SERIAL_8N1, rxPin, txPin); // ESP32 Serial2 with custom pins
   sensor.begin();                                   // Initialise the sensor library.
@@ -189,8 +354,19 @@ void setup() {
 
 void loop() {
 
+  // Handle LVGL tasks
+  lv_timer_handler();
+  
   hoehe = Sensor();  //Aufruf Subroutine Sensor für Sensorwerte
   Berechnung(hoehe); //Sprung Unterroutine Umrechnung Höhe in % Füllgrad Tank
+
+  // Check sensor status
+  bool sensor_ok = (sensor.getStatus() == DS1603L_READING_SUCCESS);
+  
+  // Update display with current values
+  int level_percent = (hoehe / 400.00) * 100; // Same calculation as in Berechnung()
+  bool wifi_connected = WiFi.status() == WL_CONNECTED;
+  update_display(hoehe, level_percent, wifi_connected, sensor_ok);
 
   //Überprüfe ob Verbindung zum Netzwerk steht oder starte Setup-Seite
   if (!wifiManager.autoConnect(SSID, PASSWD)) {   //Gebe eine SSID vor sowie ein Password. Password muss mindestens 7 Zeichen lang sein
